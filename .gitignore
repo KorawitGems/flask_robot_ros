@@ -6,3 +6,6 @@ backup/
 
 # ignore ALL files in ANY directory named test
 test/
+
+# ignore ALL files in ANY directory named __pycache__
+__pycache__/
