@@ -13,14 +13,17 @@ class ROSInterface:
         self.tf_merROS = TransformerROS()
         self.tf_mation = transformations
 
+        self.param_map_frame_ = rospy.get_param('/ros_interface/map_frame', "map")
+        self.param_robot_frame_ = rospy.get_param('/ros_interface/robot_frame', "base_link")
+
         rospy.Subscriber('map', OccupancyGrid, self.map_callback)
         rospy.Subscriber('object_markers', MarkerArray, self.markers_callback)
         self.goal_publisher = rospy.Publisher('move_base_simple/goal', PoseStamped, queue_size=10)
 
         self.map_msg = OccupancyGrid()
         self.map_origin_in_global_mat = np.identity(4)
-        self.global_in_map_origin_mat = np.identity(4)
-        self.robot_in_map_origin_mat = np.identity(4)
+        self.global_in_map_origin_mat = np.identity(4) # global is map frame
+        self.robot_in_map_origin_mat = np.identity(4) # map_origin is grid map's origin frame
         self.goal_in_global_mat = np.identity(4)
         self.goal_pose_msg = PoseStamped()
         self.object_markers_msg = None
@@ -46,7 +49,7 @@ class ROSInterface:
 
     def get_robot_to_map_origin_mat(self):
         try:
-            robot_in_global = self.tf_buffer.lookup_transform('map', 'base_link', rospy.Time(0),rospy.Duration(1.0))
+            robot_in_global = self.tf_buffer.lookup_transform(self.param_map_frame_, self.param_robot_frame_, rospy.Time(0),rospy.Duration(1.0))
             robot_in_global_mat = self.tf_merROS.fromTranslationRotation(
                                     (robot_in_global.transform.translation.x, robot_in_global.transform.translation.y, robot_in_global.transform.translation.z), 
                                     (robot_in_global.transform.rotation.x, robot_in_global.transform.rotation.y, robot_in_global.transform.rotation.z, robot_in_global.transform.rotation.w))
