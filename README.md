@@ -2,6 +2,10 @@
 
 ## Installation
 
+1. Install Flask and ROS Noetic dependencies.
+
+2. Clone flask_robot_ros in ROS workspace
+
 ```bash
 git clone https://github.com/KorawitGems/flask_robot_ros.git
 ```
@@ -13,11 +17,11 @@ roslaunch flask_robot_ros flask_ros_interface.launch
 ```
 
 <p align="center">
-  <img src="image/web.png" width="640" height="480"/>
+  <img src="image/web.png" width="640" height="360"/>
 </p>
 
-Send goal to navigate robot by ROS interface with flask
+Send goal to navigate robot via ROS interface using Flask.
 
 <p align="center">
-  <img src="image/send_goal.png" width="640" height="480"/>
+  <img src="image/send_goal.png" width="640" height="360"/>
 </p>

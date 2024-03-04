@@ -18,7 +18,7 @@ class FlaskApp:
         def index():
             return render_template('flask_ros_interface.html')
 
-        @self.app.route('/get_map_data', methods=['GET'])
+        @self.app.route('/get_map_data', methods=['GET']) # map_origin is grid map's origin frame
         def map_data():
             return self.get_map_data()
 
@@ -37,7 +37,8 @@ class FlaskApp:
         @self.app.route('/send_goal', methods=['POST'])
         def send_goal():
             self.goal = request.json
-            rospy.loginfo("Goal pose : %s", self.goal)
+            #rospy.loginfo("Goal pose : %s", self.goal)
+            rospy.loginfo("Send goal to ROS navigation")
             self.set_goal()
             return jsonify({'message': 'Goal pose sent to ROS'})
 
