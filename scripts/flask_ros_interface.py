@@ -91,47 +91,42 @@ class FlaskApp:
                 }
             })
         else:
+            rospy.logerr("Do not receive map topic")
             return jsonify({})
 
     def get_robot_in_map_origin(self):
         self.ros_handle.get_robot_to_map_origin_mat()
-        if self.ros_handle.robot_in_map_origin_mat is not None:
-            roll_robot, pitch_robot, yaw_robot = self.ros_handle.tf_mation.euler_from_matrix(self.ros_handle.robot_in_map_origin_mat[:3,:3])
-            #rospy.loginfo("Robot in map origin position x: %s, R matrix: %s", self.ros_handle.robot_in_map_origin_mat[0][3], self.ros_handle.robot_in_map_origin_mat[:3,:3])
-            return jsonify({
-                'position': {
-                    'x': self.ros_handle.robot_in_map_origin_mat[0][3],
-                    'y': self.ros_handle.robot_in_map_origin_mat[1][3],
-                    'z': self.ros_handle.robot_in_map_origin_mat[2][3]
-                },
-                'orientation': {
-                    'roll': roll_robot,
-                    'pitch': pitch_robot,
-                    'yaw': yaw_robot
-                }
-            })
-        else:
-            return jsonify({})
+        roll_robot, pitch_robot, yaw_robot = self.ros_handle.tf_mation.euler_from_matrix(self.ros_handle.robot_in_map_origin_mat[:3,:3])
+        #rospy.loginfo("Robot in map origin position x: %s, R matrix: %s", self.ros_handle.robot_in_map_origin_mat[0][3], self.ros_handle.robot_in_map_origin_mat[:3,:3])
+        return jsonify({
+            'position': {
+                'x': self.ros_handle.robot_in_map_origin_mat[0][3],
+                'y': self.ros_handle.robot_in_map_origin_mat[1][3],
+                'z': self.ros_handle.robot_in_map_origin_mat[2][3]
+            },
+            'orientation': {
+                'roll': roll_robot,
+                'pitch': pitch_robot,
+                'yaw': yaw_robot
+            }
+        })
 
     def get_global_frame_in_map_origin(self):
         self.ros_handle.get_global_to_map_origin_mat()
-        if self.ros_handle.global_in_map_origin_mat is not None:
-            roll_global, pitch_global, yaw_global = self.ros_handle.tf_mation.euler_from_matrix(self.ros_handle.global_in_map_origin_mat[:3,:3])   
-            #rospy.loginfo("Global in map origin position x : %s, R matrix: %s", self.ros_handle.global_in_map_origin_mat[0][3], self.ros_handle.global_in_map_origin_mat[:3,:3])
-            return jsonify({
-                'position': {
-                    'x': self.ros_handle.global_in_map_origin_mat[0][3],
-                    'y': self.ros_handle.global_in_map_origin_mat[1][3],
-                    'z': self.ros_handle.global_in_map_origin_mat[2][3]
-                },
-                'orientation': {
-                    'roll': roll_global,
-                    'pitch': pitch_global,
-                    'yaw': yaw_global
-                }
-            })
-        else:
-            return jsonify({})
+        roll_global, pitch_global, yaw_global = self.ros_handle.tf_mation.euler_from_matrix(self.ros_handle.global_in_map_origin_mat[:3,:3])   
+        #rospy.loginfo("Global in map origin position x : %s, R matrix: %s", self.ros_handle.global_in_map_origin_mat[0][3], self.ros_handle.global_in_map_origin_mat[:3,:3])
+        return jsonify({
+            'position': {
+                'x': self.ros_handle.global_in_map_origin_mat[0][3],
+                'y': self.ros_handle.global_in_map_origin_mat[1][3],
+                'z': self.ros_handle.global_in_map_origin_mat[2][3]
+            },
+            'orientation': {
+                'roll': roll_global,
+                'pitch': pitch_global,
+                'yaw': yaw_global
+            }
+        })
 
     def set_goal(self):
         self.ros_handle.goal_in_global_mat = np.dot(self.ros_handle.map_origin_in_global_mat,

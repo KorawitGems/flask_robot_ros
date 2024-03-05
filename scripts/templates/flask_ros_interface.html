@@ -234,13 +234,15 @@ class ROSWeb {
 
         this.globalContext.beginPath();
         this.globalContext.moveTo(globalXCanvas , globalYCanvas);
-        this.globalContext.lineTo(globalXCanvas + 5, globalYCanvas);
+        this.globalContext.lineTo(globalXCanvas + 10, globalYCanvas);
+        this.globalContext.lineWidth = 3;
         this.globalContext.strokeStyle = 'red';
         this.globalContext.stroke();
 
         this.globalContext.beginPath();
         this.globalContext.moveTo(globalXCanvas, globalYCanvas);
-        this.globalContext.lineTo(globalXCanvas, globalYCanvas - 5);
+        this.globalContext.lineTo(globalXCanvas, globalYCanvas - 10);
+        this.globalContext.lineWidth = 3;
         this.globalContext.strokeStyle = 'green';
         this.globalContext.stroke();
     }
@@ -261,7 +263,7 @@ class ROSWeb {
         this.robotContext.save();
         this.robotContext.translate(robotXCanvas, robotYCanvas); // move origin to robot position canvas
         this.robotContext.rotate(robotYawCanvas); // rotate around robot origin
-        this.robotContext.fillStyle = 'black';
+        this.robotContext.fillStyle = 'green';
         this.robotContext.beginPath(); // Draw pentagon robot
         this.robotContext.moveTo(0 + 6, 0);
         this.robotContext.lineTo(0 + 2, 0 + 4);
@@ -310,7 +312,7 @@ class ROSWeb {
         this.goalContext.save();
         this.goalContext.translate(pixelGoalOnCanvas.x, pixelGoalOnCanvas.y); // move origin to goal position canvas
         this.goalContext.rotate(pixelGoalOnCanvas.yaw); // rotate around goal origin
-        this.goalContext.fillStyle = 'green';
+        this.goalContext.fillStyle = 'red';
         this.goalContext.beginPath(); // Draw triangle goal
         this.goalContext.moveTo(0 + 10, 0);
         this.goalContext.lineTo(0 , 0 + 2);
@@ -321,8 +323,8 @@ class ROSWeb {
     }
 
     start() {
-        setInterval(() => this.fetchMap(), 10000);
-        setInterval(() => this.fetchGlobal(), 100000);
+        setInterval(() => this.fetchMap(), 1000);
+        setInterval(() => this.fetchGlobal(), 1000);
         setInterval(() => this.fetchRobotPose(), 30);
         setInterval(() => this.fetchObjectPose(), 3000);
         this.fetchMap();
@@ -379,7 +381,7 @@ class ROSWeb {
         // Add 'clicked' class to change button color to green
         this.goalButton.classList.add('clicked');
         this.goalButton.innerHTML = "Select" + "<br>";
-        this.stateCommand.innerHTML = "Selecting goal's position" + "<br>";
+        this.stateCommand.innerHTML = "Selecting goal's position." + "<br>";
     }
 
     cancelButtonPressState(event) {
@@ -389,7 +391,7 @@ class ROSWeb {
             this.isDragging = false;
             this.pixelGoalCanvas = null;
             this.goalButton.classList.remove('clicked'); // Remove 'clicked' class
-            this.stateCommand.innerHTML = "Waiting for goal" + "<br>";
+            this.stateCommand.innerHTML = "Waiting for the goal." + "<br>";
             this.goalButton.innerHTML = "Goal" + "<br>";
         }
     }
@@ -400,7 +402,7 @@ class ROSWeb {
         const yCanvas = event.offsetY;
         this.pixelGoalCanvas = { x: xCanvas, y: yCanvas, yaw: 0};
         this.isDragging = true;
-        this.stateCommand.innerHTML = "Holding and move the mouse to select goal's heading" + "<br>";
+        this.stateCommand.innerHTML = "Hold and move the mouse to select goal's heading." + "<br>";
     }
 
     mouseMoveHandler(event) {
@@ -413,7 +415,7 @@ class ROSWeb {
         const dy = (dragYCanvas - this.pixelGoalCanvas.y);
         this.pixelGoalCanvas.yaw = Math.atan2(dy, dx);
         this.drawGoal(this.pixelGoalCanvas);
-        this.stateCommand.innerHTML = "Holding and move the mouse to select goal's heading, then release the mouse" + "<br>";
+        this.stateCommand.innerHTML = "Hold and move the mouse to select goal's heading, then release the mouse" + "<br>";
     }
 
     mouseUpHandler(event) {
@@ -427,7 +429,7 @@ class ROSWeb {
         this.pixelGoalCanvas = null;
         this.goalButton.classList.remove('clicked');
         this.pressGoalButton = false;
-        this.stateCommand.innerHTML = "Sending goal to robot" + "<br>";
+        this.stateCommand.innerHTML = "Sending the goal to ROS" + "<br>";
         this.goalButton.innerHTML = "Goal" + "<br>";
     }
 
@@ -449,7 +451,7 @@ class ROSWeb {
             if (!response.ok) {
                 throw new Error('Failed to send goal pose to ROS');
             }
-            console.log('Goal pose sent to ROS');
+            console.log('Sending goal to ROS');
         })
         .catch(error => console.error('Error sending goal pose to ROS:', error));
     }
