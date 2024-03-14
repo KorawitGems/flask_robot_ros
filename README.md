@@ -2,7 +2,7 @@
 
 # Installation
 
-1. Install Flask, ROS Noetic dependencies and navigation stack.
+1. Install Flask, ROS Noetic and navigation stack.
 
 2. Clone flask_robot_ros in ROS workspace
 
@@ -21,7 +21,7 @@ roslaunch flask_robot_ros flask_ros_interface.launch
 </p>
 
 
-Send goal to navigate robot via ROS interface using Flask.
+Send goal to navigate robot via web GUI.
 
 
 <p align="center">
