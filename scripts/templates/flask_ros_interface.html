@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROS Interface</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif; /* Choose a suitable font */
+            background-color: #eaf7e7; /* Set background color */
+        }
+
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #ffffff, #f0f0f0); /* Background gradient */
+            z-index: -1; /* Move background behind other elements */
+        }
+
+        .map-container-layer {
+            position: absolute;
+            top: 30px;
+            left: 150px;
+            width: 250px;
+            height: 270px;
+            /* border: 1px solid rgb(101, 181, 247); */
+        }
+
+        .map-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 1; 
+        }
+        .grid-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 2; 
+        }
+        .global-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 3; 
+        }
+        .goal-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 4; 
+        }
+        .object-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 5; 
+        }
+        .robot-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 6; 
+        }
+        .click-layer {
+            position: absolute;
+            /* border: 1px solid rgb(26, 25, 25); */
+            z-index: 7; 
+            /* Set z-index for goal layer on top to click goal pose 
+                If it is bottom layer, it can not be clicked */
+        }
+
+        #coordinate {
+            position: absolute;
+            top: 180px;
+            right: -200px; /* Adjust distance from left */
+            width: 150px;
+            height: 50px;
+            /* border: 1px solid #20221e; */
+            font-size: 12px; /* Adjust font size */
+            text-align: left; /* Align text to the left */
+        }
+
+        #goal-button {
+            position: absolute;
+            top: 40px;
+            right: -130px; /* Adjust distance from right */
+            width: 50px;
+            height: 50px;
+            /* border: 1px solid #0e0e0d; */
+            background-color: #ff0000; /* Set button background color */
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 12px; /* Adjust font size */
+            cursor: pointer;
+            border-radius: 25px; /* Set border radius */
+        }
+        #goal-button.clicked {
+            background-color: green;
+        }
+
+        #state {
+            position: absolute;
+            Bottom: -100px;
+            left: 0px; /* Adjust distance from left */
+            width: 230px;
+            height: 40px;
+            border: 1px solid #20221e;
+            font-size: 12px; /* Adjust font size */
+            text-align: left; /* Align text to the left */
+        }
+    </style>
+</head>
+<body>
+
+<div id="map-container" class="map-container-layer">
+    <canvas id="map-canvas" class="map-layer"></canvas>
+    <canvas id="grid-canvas" class="grid-layer"></canvas>
+    <canvas id="global-canvas" class="global-layer"></canvas>
+    <canvas id="goal-canvas" class="goal-layer"></canvas>
+    <canvas id="object-canvas" class="object-layer"></canvas>
+    <canvas id="robot-canvas" class="robot-layer"></canvas>
+    <canvas id="click-canvas" class="click-layer"></canvas>
+    <p id="coordinate"></p>
+    <button id="goal-button"></button>
+    <p id="state"></p>
+</div>
+
+<script>
+class ROSWeb {
+    constructor() {
+        this.mapContainer = document.getElementById('map-container');
+        this.mapCanvas = document.getElementById('map-canvas');
+        this.mapContext = this.mapCanvas.getContext('2d');
+        this.gridCanvas = document.getElementById('grid-canvas');
+        this.gridContext = this.gridCanvas.getContext('2d');
+        this.globalCanvas = document.getElementById('global-canvas');
+        this.globalContext = this.globalCanvas.getContext('2d');
+        this.goalCanvas = document.getElementById('goal-canvas');
+        this.goalContext = this.goalCanvas.getContext('2d');
+        this.objectCanvas = document.getElementById('object-canvas');
+        this.objectContext = this.objectCanvas.getContext('2d');
+        this.robotCanvas = document.getElementById('robot-canvas');
+        this.robotContext = this.robotCanvas.getContext('2d');
+        this.clickCanvas = document.getElementById('click-canvas');
+        this.clickContext = this.clickCanvas.getContext('2d');
+        this.mapCoordinate = document.getElementById('coordinate');
+        this.goalButton = document.getElementById('goal-button');
+        this.stateCommand = document.getElementById('state');
+
+        this.pixelGoalCanvas = null;
+        this.isDragging = false;
+        this.mapWidth = 0;
+        this.mapHeight = 0;
+        this.mapResolution = 0;
+        this.mapImageData = [];
+        this.pressGoalButton = false;
+
+        this.clickCanvas.addEventListener('mousedown', this.mouseDownHandler.bind(this));
+        this.clickCanvas.addEventListener('mousemove', this.mouseMoveHandler.bind(this));
+        this.clickCanvas.addEventListener('mouseup', this.mouseUpHandler.bind(this));
+        
+        // Event listeners for Goal button and canceling button press state
+        this.goalButton.addEventListener('click', this.clickGoalButton.bind(this));
+        document.addEventListener('keydown', this.cancelButtonPressState.bind(this));
+        
+        this.goalButton.innerHTML = "Goal" + "<br>";
+        this.stateCommand.innerHTML = "Waiting for goal" + "<br>";
+    }
+
+    drawMap(mapData) {
+        //console.log('Drawing map... : Map data:', mapData); // Log the map data received
+        this.mapWidth = mapData.map_info.width;
+        this.mapHeight = mapData.map_info.height;
+        this.mapResolution = mapData.map_info.resolution;
+        this.mapImageData = mapData.map_data;
+
+        this.clickCanvas.width = this.mapWidth;
+        this.clickCanvas.height = this.mapHeight;
+
+        this.mapCanvas.width = this.mapWidth;
+        this.mapCanvas.height = this.mapHeight;
+
+        // Adjust map-container position respect to map data
+        this.mapContainer.style.width = `${this.mapWidth}px`;
+        this.mapContainer.style.height = `${this.mapHeight}px`;
+
+        // Adjust coordinate position respect to map data
+        this.mapCoordinate.style.Top = `${this.mapHeight - 50}px`;
+
+        // Adjust state position respect to map data
+        this.stateCommand.style.width = `${this.mapWidth}px`;
+
+        // Draw Map
+        for (let y = 0; y < this.mapHeight; y++) {
+            for (let x = 0; x < this.mapWidth; x++) {
+                const value = this.mapImageData[y * this.mapWidth + x];
+                if (value === 100) {
+                    this.mapContext.fillStyle = 'black';
+                } else if (value === 0) {
+                    this.mapContext.fillStyle = 'white';
+                } else {
+                    this.mapContext.fillStyle = 'gray';
+                }
+                const yOnCanvas = this.mapHeight - y;
+                this.mapContext.fillRect(x, yOnCanvas, 1, 1);
+            }
+        }
+        
+        // Draw Grid
+        this.gridCanvas.width = this.mapWidth;
+        this.gridCanvas.height = this.mapHeight;
+        this.gridContext.beginPath();
+        this.gridContext.strokeStyle = 'lightgray';
+        const gridSize = Math.floor(1.0 / this.mapResolution);
+        for (let y = 0; y <= this.mapHeight; y += gridSize) {
+            this.gridContext.moveTo(0, this.mapHeight - y);
+            this.gridContext.lineTo(this.mapWidth, this.mapHeight - y);
+        }
+        for (let x = 0; x <= this.mapWidth; x += gridSize) {
+            this.gridContext.moveTo(x, 0);
+            this.gridContext.lineTo(x, this.mapHeight);
+        }
+        this.gridContext.stroke();
+    }
+
+    drawGlobalFrame(globalFrame) {
+        //console.log('Drawing global frame data:', globalFrame);
+        this.globalCanvas.width = this.mapWidth;
+        this.globalCanvas.height = this.mapHeight;
+        const globalXCanvas = Math.floor(globalFrame.position.x / this.mapResolution);
+        const globalYCanvas = this.mapHeight - Math.floor(globalFrame.position.y / this.mapResolution);
+
+        this.globalContext.beginPath();
+        this.globalContext.moveTo(globalXCanvas , globalYCanvas);
+        this.globalContext.lineTo(globalXCanvas + 10, globalYCanvas);
+        this.globalContext.lineWidth = 3;
+        this.globalContext.strokeStyle = 'red';
+        this.globalContext.stroke();
+
+        this.globalContext.beginPath();
+        this.globalContext.moveTo(globalXCanvas, globalYCanvas);
+        this.globalContext.lineTo(globalXCanvas, globalYCanvas - 10);
+        this.globalContext.lineWidth = 3;
+        this.globalContext.strokeStyle = 'green';
+        this.globalContext.stroke();
+    }
+
+    drawRobot(robotPose) {
+        //console.log('Drawing Robot pose:', robotPose);
+        this.robotCanvas.width = this.mapWidth;
+        this.robotCanvas.height = this.mapHeight;
+
+        const robotWidth = 0.3;
+        const robotHeight = 0.2;
+
+        const robotXCanvas = Math.floor(robotPose.position.x / this.mapResolution);
+        const robotYCanvas = this.mapHeight - Math.floor(robotPose.position.y / this.mapResolution);
+        const robotYawCanvas = - robotPose.orientation.yaw;
+
+        this.robotContext.clearRect(0, 0, this.mapWidth, this.mapHeight);
+        this.robotContext.save();
+        this.robotContext.translate(robotXCanvas, robotYCanvas); // move origin to robot position canvas
+        this.robotContext.rotate(robotYawCanvas); // rotate around robot origin
+        this.robotContext.fillStyle = 'green';
+        this.robotContext.beginPath(); // Draw pentagon robot
+        this.robotContext.moveTo(0 + 6, 0);
+        this.robotContext.lineTo(0 + 2, 0 + 4);
+        this.robotContext.lineTo(0 - 4, 0 + 4);
+        this.robotContext.lineTo(0 - 4, 0 - 4);
+        this.robotContext.lineTo(0 + 2, 0 - 4);
+        this.robotContext.closePath();
+        this.robotContext.fill();
+        this.robotContext.restore();
+    }
+
+    drawObject(posesObject) {
+        this.objectCanvas.width = this.mapWidth;
+        this.objectCanvas.height = this.mapHeight;
+        
+        if (!Array.isArray(posesObject)) {
+            console.error('Error: object poses data is not an array');
+            return;
+        }
+        
+        this.objectContext.clearRect(0, 0, this.mapWidth, this.mapHeight);
+        //let ColorArray = ['yellow','pink',]
+        for (let i = 0; i < posesObject.length; i++) {
+            let poseObject = posesObject[i];
+            //const randomColor = Math.floor(Math.random()*16777215).toString(16);
+            const objectXCanvas = Math.floor(poseObject.position.x / this.mapResolution);
+            const objectYCanvas = this.mapHeight - Math.floor(poseObject.position.y / this.mapResolution);
+            //console.log('Drawing objectXCanvas:', objectXCanvas);
+            this.objectContext.beginPath();
+            this.objectContext.fillStyle = 'blue';
+            this.objectContext.arc(objectXCanvas, objectYCanvas, 2, 0, 2 * Math.PI);
+            this.objectContext.fill();
+
+            this.objectContext.font = "12px Arial";
+            this.objectContext.textAlign = "center";
+            this.objectContext.fillText(poseObject.name, objectXCanvas - 15, objectYCanvas + 15);
+        }
+    }
+
+    drawGoal(pixelGoalOnCanvas) {
+        //console.log('Drawing Goal on Canvas:', pixelGoalOnCanvas);
+        this.goalCanvas.width = this.mapWidth;
+        this.goalCanvas.height = this.mapHeight;
+
+        this.goalContext.clearRect(0, 0, this.mapWidth, this.mapHeight);
+        this.goalContext.save();
+        this.goalContext.translate(pixelGoalOnCanvas.x, pixelGoalOnCanvas.y); // move origin to goal position canvas
+        this.goalContext.rotate(pixelGoalOnCanvas.yaw); // rotate around goal origin
+        this.goalContext.fillStyle = 'red';
+        this.goalContext.beginPath(); // Draw triangle goal
+        this.goalContext.moveTo(0 + 10, 0);
+        this.goalContext.lineTo(0 , 0 + 2);
+        this.goalContext.lineTo(0 , 0 - 2);
+        this.goalContext.closePath();
+        this.goalContext.fill();
+        this.goalContext.restore();
+    }
+
+    start() {
+        setInterval(() => this.fetchMap(), 1000);
+        setInterval(() => this.fetchGlobal(), 1000);
+        setInterval(() => this.fetchRobotPose(), 30);
+        setInterval(() => this.fetchObjectPose(), 3000);
+        this.fetchMap();
+    }
+
+    fetchMap() {
+        fetch('/get_map_data')
+            .then(response => response.json())
+            .then(mapData => {
+                //console.log('Map data:', mapData);
+                this.drawMap(mapData);
+            })
+            .catch(error => console.error('Error fetching map data:', error));
+    }
+
+    fetchRobotPose() {
+        fetch('/get_robot_pose')
+            .then(response => response.json())
+            .then(robotPose => {
+                //console.log('Robot Pose:', robotPose);
+                if (robotPose && robotPose.position) {
+                    this.drawRobot(robotPose);
+                }
+            })
+            .catch(error => console.error('Error fetching robot pose:', error));
+    }
+
+    fetchGlobal() {
+        fetch('/get_global_frame')
+            .then(response => response.json())
+            .then(globalFrame => {
+                //console.log('Global frame:', globalFrame);
+                if (globalFrame && globalFrame.position) {
+                    this.drawGlobalFrame(globalFrame);
+                }
+            })
+            .catch(error => console.error('Error fetching global frame:', error));
+    }
+
+    fetchObjectPose() {
+        fetch('/get_object_poses')
+            .then(response => response.json())
+            .then(objectPoses => {
+                //console.log('object poses:', objectPoses);
+                if (objectPoses){
+                    this.drawObject(objectPoses);
+                }
+            })
+            .catch(error => console.error('Error fetching object poses:', error));
+    }
+
+    clickGoalButton() {
+        this.pressGoalButton = true;
+        // Add 'clicked' class to change button color to green
+        this.goalButton.classList.add('clicked');
+        this.goalButton.innerHTML = "Select" + "<br>";
+        this.stateCommand.innerHTML = "Selecting goal's position." + "<br>";
+    }
+
+    cancelButtonPressState(event) {
+        if (!this.pressGoalButton) return;
+        if (event.key === "Escape" ) {
+            this.pressGoalButton = false;
+            this.isDragging = false;
+            this.pixelGoalCanvas = null;
+            this.goalButton.classList.remove('clicked'); // Remove 'clicked' class
+            this.stateCommand.innerHTML = "Waiting for the goal." + "<br>";
+            this.goalButton.innerHTML = "Goal" + "<br>";
+        }
+    }
+
+    mouseDownHandler(event) {
+        if (!this.pressGoalButton) return;
+        const xCanvas = event.offsetX;
+        const yCanvas = event.offsetY;
+        this.pixelGoalCanvas = { x: xCanvas, y: yCanvas, yaw: 0};
+        this.isDragging = true;
+        this.stateCommand.innerHTML = "Hold and move the mouse to select goal's heading." + "<br>";
+    }
+
+    mouseMoveHandler(event) {
+        /* this.mapCoordinate.innerHTML = "Coordinate x : " + event.offsetX + "<br>";
+        this.mapCoordinate.innerHTML += "Coordinate y : " + event.offsetY + "<br>"; */
+        if (!this.isDragging) return;
+        const dragXCanvas = event.offsetX;
+        const dragYCanvas = event.offsetY;
+        const dx = (dragXCanvas - this.pixelGoalCanvas.x);
+        const dy = (dragYCanvas - this.pixelGoalCanvas.y);
+        this.pixelGoalCanvas.yaw = Math.atan2(dy, dx);
+        this.drawGoal(this.pixelGoalCanvas);
+        this.stateCommand.innerHTML = "Hold and move the mouse to select goal's heading, then release the mouse" + "<br>";
+    }
+
+    mouseUpHandler(event) {
+        if (!this.pixelGoalCanvas) return;
+        console.log('pixelGoalCanvas : ', this.pixelGoalCanvas);
+        const poseGoalxMap = this.pixelGoalCanvas.x * this.mapResolution;
+        const poseGoalyMap = (this.mapHeight - this.pixelGoalCanvas.y) * this.mapResolution;
+        const poseGoalyawMap = -this.pixelGoalCanvas.yaw;
+        this.sendGoalPose(poseGoalxMap, poseGoalyMap, poseGoalyawMap);
+        this.isDragging = false;
+        this.pixelGoalCanvas = null;
+        this.goalButton.classList.remove('clicked');
+        this.pressGoalButton = false;
+        this.stateCommand.innerHTML = "Sending the goal to ROS" + "<br>";
+        this.goalButton.innerHTML = "Goal" + "<br>";
+    }
+
+
+    sendGoalPose(poseXmap, poseYmap, poseYawmap) {
+        const goalToROS = {
+            position: { x: poseXmap, y: poseYmap },
+            orientation: { yaw: poseYawmap }
+        };
+
+        fetch('/send_goal', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(goalToROS)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to send goal pose to ROS');
+            }
+            console.log('Sending goal to ROS');
+        })
+        .catch(error => console.error('Error sending goal pose to ROS:', error));
+    }
+}
+
+const rosWeb = new ROSWeb();
+rosWeb.start();
+</script>
+
+</body>
+</html>
+
