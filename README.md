@@ -15,6 +15,9 @@ git clone https://github.com/KorawitGems/flask_robot_ros.git
 ```bash
 roslaunch flask_robot_ros flask_ros_interface.launch
 ```
+<p align="center">
+  <img src="image/robot_gazebo.png" width="640" height="360"/>
+</p>
 
 <p align="center">
   <img src="image/web_interface.png" width="640" height="360"/>
